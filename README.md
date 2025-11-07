@@ -4,6 +4,15 @@ A lightweight, high‑performance **B+‑Tree** implementation for .NET. Designe
 
 Supports both **in‑memory** and **file‑backed** modes. Inserts, finds, commits, and closes with predictable performance and zero external dependencies.
 
+**Performance Highlight**
+
+**3,000,000 inserts in 0.95s**  
+vs **SQLite (WAL): 3.10s**  
+➡️ **~3.26× faster**
+
+![Benchmark: 3M Inserts](bench.png)
+
+
 ---
 
 ## Features (Community Edition)
