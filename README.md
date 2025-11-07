@@ -84,22 +84,8 @@ tree.Commit();
 | ---------------------------------------------------------- | ----------------------------------------------- |
 | `Insert(ReadOnlySpan<byte> key, ReadOnlySpan<byte> value)` | Insert or overwrite a key/value record          |
 | `bool Find(ReadOnlySpan<byte> key, Span<byte> value)`      | Point lookup; copies value into provided buffer |
-| `void Commit()`                                            | Flushes cached pages to disk                    |
-| `void Close()`                                             | Closes file handles and releases resources      |
-
---------|-------------|
-| `Insert(ReadOnlySpan<byte> key, ReadOnlySpan<byte> value, bool bLock = true)` | Insert or overwrite a key/value record |
-| `bool Find(ReadOnlySpan<byte> key, Span<byte> value, bool bLock = false)` | Point lookup; copies value into provided buffer |
-| `void Bof()` | Positions the cursor before the first record |
-| `bool Next(out ReadOnlySpan<byte> key, Span<byte> value, bool acquireLock = true)` | Forward iteration from cursor |
-
---------|-------------|
-| `Insert(byte[] key, byte[] value)` | Inserts or overwrites a key/value record |
-| `bool Find(byte[] key, out byte[] value)` | Returns the value if key exists |
-| `Commit()` | Flushes all dirty pages to disk |
-| `Close()` | Closes the index and releases resources |
-
----
+| `void Commit()`                                            | Flushes all dirty pages to disk                 |
+| `void Close()`                                             | Closes the index and releases resources         |
 
 ## Disk Format (Simplified)
 
