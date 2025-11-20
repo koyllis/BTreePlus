@@ -1,67 +1,42 @@
 # BTreePlus
 
-A lightweight, high‑performance **B+‑Tree** implementation for .NET. Designed for **embedded indexing**, **fast lookups**, and **deterministic on‑disk persistence**.
+A lightweight, high-performance B+-Tree engine for .NET.
+Designed for embedded indexing, fast point lookups, and deterministic on-disk persistence — with zero dependencies.
 
-Supports both **in‑memory** and **file‑backed** modes. Inserts, finds, commits, and closes with predictable performance and zero external dependencies.
-
-**Performance Highlight**
-
-**3,000,000 inserts in 0.95s**  
-vs **SQLite (WAL): 3.10s**  
-➡️ **~3.26× faster**
-
-![Benchmark: 3M Inserts](bench.png)
-
+Supports in-memory and file-backed modes with predictable performance.
 
 ---
 
-## Features (Community Edition)
+## Performance (Community Edition)
 
-* ✅ B+‑Tree with sorted key navigation
-* ✅ Fixed‑length keys and values for maximum speed
-* ✅ In‑Memory or File‑Backed operation
-* ✅ `Insert`, `Find`, `Commit`, `Close`
-* ✅ Transparent page caching
-* ✅ Zero dependencies — pure C#
-
-> The Community Edition is ideal for embedded indexing, research, education, and small database engines.
-
-For advanced database/production workloads (iterators, compression, journaling, concurrency, range scanning) see **Commercial Edition** section.
+3,000,000 inserts in 0.95s  
+vs SQLite (WAL): 3.10s  
+≈ 3.26× faster on this workload
 
 ---
 
-## Example Usage
+## Features — Community Edition
 
-````csharp
-using System.Buffers.Binary;
-using mmh; // namespace containing BTree
+* Sorted B+ Tree with fast point lookups
+* Fixed length keys and values for maximum speed
+* In-memory or file-backed operation
+* Insert, Find, Commit, Close
+* Deterministic page layout
+* Zero dependencies — pure C#
+* Safe single-writer operation
 
-// Open or create a file-backed tree (example values)
-var bt = BTree.CreateOrOpen(
-    path: "data.bt",
-    keyBytes: 8,
-    dataBytes: 4,
-    pageSize: 8,          // 8 * 512 = 4096 bytes
-    enableCache: true);
+The Community Edition is ideal for embedded systems, local indexing, POS engines, research, file formats, and custom storage projects.
 
-// INSERT key=Int64(BE) → value=Int32(LE)
-Span<byte> key = stackalloc byte[8];
-Span<byte> val = stackalloc byte[4];
-BinaryPrimitives.WriteInt64BigEndian(key, 12345);
-BinaryPrimitives.WriteInt32LittleEndian(val, 42);
-_ = bt.Insert(key, val);
+For journaling, concurrency, iterators, range scans, variable-length keys, and compression, see Commercial Edition.
 
-// FIND
-byte[] outBuf = new byte[4];
-bool ok = bt.Find(key, outBuf, bLock: true);
-int found = ok ? BinaryPrimitives.ReadInt32LittleEndian(outBuf) : -1;
+---
 
-// COMMIT
-bt.Commit();
+## Quick Start Example
+
 ```csharp
 using BTreePlus;
 
-// Create or open an index (file‑backed)
+// Create or open an on-disk index
 using var tree = new BTree(
     path: "data.idx",
     keyLength: 8,
@@ -69,116 +44,103 @@ using var tree = new BTree(
     pageSize: 4096
 );
 
-// Insert a key/value pair
+// Insert Int64 → 16-byte record
 var key = BitConverter.GetBytes(12345L);
 var value = new byte[16];
 value[0] = 42;
+
 tree.Insert(key, value);
 
-// Search
+// Lookup
 if (tree.Find(key, out var result))
 {
     Console.WriteLine("Found value: " + result[0]);
 }
 
-// Ensure data is flushed to disk
+// Flush pages to disk
 tree.Commit();
-````
+```
 
 ---
 
-## API Overview
+## Advanced Low-Level API
 
-| Method                                                     | Description                                     |
-| ---------------------------------------------------------- | ----------------------------------------------- |
-| `Insert(ReadOnlySpan<byte> key, ReadOnlySpan<byte> value)` | Insert or overwrite a key/value record          |
-| `bool Find(ReadOnlySpan<byte> key, Span<byte> value)`      | Point lookup; copies value into provided buffer |
-| `void Commit()`                                            | Flushes all dirty pages to disk                 |
-| `void Close()`                                             | Closes the index and releases resources         |
+```csharp
+bool Insert(ReadOnlySpan<byte> key, ReadOnlySpan<byte> value, bool bLock = true);
+bool Find(ReadOnlySpan<byte> key, Span<byte> value, bool bLock = false);
+
+void Bof();
+bool Next(out ReadOnlySpan<byte> key, Span<byte> value, bool acquireLock = true);
+
+void Commit();
+void Close();
+```
+
+---
 
 ## Disk Format (Simplified)
 
-* Pages are fixed‑size (default 4096 bytes)
-* Keys and values are fixed‑length
-* Node splits propagate upward
+* Fixed-size pages (default 4096 bytes)
+* Fixed-length keys and values
+* Balanced B+-Tree with node splits
 * Commit ensures persisted page writes
+* Crash tolerance depends on environment (single-writer, no WAL)
 
-> Crash recovery guarantees depend on environment. For full transactional durability, see **Commercial Edition**.
+For full durability (WAL/MVCC), see Commercial Edition.
 
 ---
 
 ## Performance Notes
 
-* **Benchmark (FileStream, cache enabled):** ~3,000,000 inserts in **0.95 seconds** on a modern NVMe system (~3.1M inserts/sec).
-
-* Designed for **very fast point lookups**
-
-* Avoids GC churn by reusing buffers and pages
-
+* File-backed with cache enabled: 3,000,000 inserts in 0.95 seconds on a modern NVMe system
+* Minimal allocations — avoids GC churn
+* Paging strategy optimized for sequential inserts
 * Performance scales with page size and key ordering
-
-A benchmark suite (BenchmarkDotNet) is included in `/bench/` (optional).
 
 ---
 
 ## Commercial Edition
 
-The Commercial Edition adds:
+Adds:
 
-* Variable‑length keys & values
-* Concurrent read/write (multi‑writer safety)
-* MVCC or journaling for crash‑safe commits
-* Cursors & forward/backward iteration
-* Prefix/range scans (e.g., `Seek(prefix) → Next() → Next() ...`)
+* Variable-length keys and values
+* Journaling / crash-safe commits
+* MVCC or multi-writer concurrency
+* Cursors and forward/backward iteration
+* Prefix and range scans
 * Bulk load and compaction
-* Optional page compression
 
-If you are building:
 
-* A **full database**,
-* A **document store**,
-* A **ledger**,
-* A **POS / ERP engine**,
-* A **custom distributed store**,
+Recommended for:
 
-…then the Commercial Edition is likely a better fit.
+* Full database engines
+* Document stores
+* Ledgers
+* POS / ERP systems
+* High-throughput indexing on NVMe
 
-Contact: **[btplus@mmhsys.com](mailto:btplus@mmhsys.com)** (placeholder) to discuss.
+Contact: btplus@mmhsys.com
 
 ---
 
 ## License
 
-Community Edition is licensed under **MIT**.
+Community Edition is licensed under MIT.  
 Commercial features require a license.
 
 ---
 
 ## Roadmap
 
-* Tests + property‑based correctness suite
-* Iterators in Community Edition (optional)
+* Expanded tests and property-based correctness suite
+* Optional iterators for Community Edition
 * Metadata pages / schema metadata
 
 ---
 
 ## Status
 
-Active development. API subject to minor refinement before **v1.0.0**.
+Active development.
+API may see minor refinements before v1.2.5.
 
-Pull requests & discussions welcome.
-
-```text
-BTreePlus — Fire for Builders
-```
-
----
-
-## Minimal API (surface)
-
-```csharp
-bool Insert(ReadOnlySpan<byte> key, ReadOnlySpan<byte> value, bool bLock = true);
-bool Find(ReadOnlySpan<byte> key, Span<byte> value, bool bLock = false);
-void Bof();
-bool Next(out ReadOnlySpan<byte> key, Span<byte> value, bool acquireLock = true);
-```
+Pull requests and discussions welcome.
