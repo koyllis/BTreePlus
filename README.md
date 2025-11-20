@@ -41,7 +41,7 @@ using var tree = new BTree(
     path: "data.idx",
     keyLength: 8,
     valueLength: 16,
-    pageSize: 4096
+    pageSize: 8
 );
 
 // Insert Int64 → 16-byte record
